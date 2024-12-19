@@ -1,0 +1,67 @@
+{
+	"jobConfig": {
+		"name": "ten-cars-crash-etl-job",
+		"description": "Creating AWS Glue Job for Data Cleaning",
+		"role": "arn:aws:iam::034362057808:role/AWS_GLUE_S3_ccd",
+		"command": "glueetl",
+		"version": "4.0",
+		"runtime": null,
+		"workerType": "G.2X",
+		"numberOfWorkers": 20,
+		"maxCapacity": 40,
+		"jobRunQueuingEnabled": false,
+		"maxRetries": 0,
+		"timeout": 2880,
+		"maxConcurrentRuns": 1,
+		"security": "none",
+		"scriptName": "ten-cars-crash-etl-job.py",
+		"scriptLocation": "s3://aws-glue-assets-034362057808-us-west-2/scripts/",
+		"language": "python-3",
+		"spark": true,
+		"sparkConfiguration": "standard",
+		"jobParameters": [
+			{
+				"key": "--JOB_NAME",
+				"value": "ten-cars-crash-etl-job",
+				"existing": false
+			}
+		],
+		"tags": [],
+		"jobMode": "DEVELOPER_MODE",
+		"createdOn": "2024-11-06T15:54:32.544Z",
+		"developerMode": true,
+		"connectionsList": [],
+		"temporaryDirectory": "s3://aws-glue-assets-034362057808-us-west-2/temporary/",
+		"logging": true,
+		"glueHiveMetastore": true,
+		"etlAutoTuning": true,
+		"metrics": true,
+		"observabilityMetrics": true,
+		"bookmark": "job-bookmark-disable",
+		"sparkPath": "s3://aws-glue-assets-034362057808-us-west-2/sparkHistoryLogs/",
+		"flexExecution": false,
+		"minFlexWorkers": null,
+		"maintenanceWindow": null
+	},
+	"dag": {
+		"node-1730908445043": {
+			"nodeId": "node-1730908445043",
+			"dataPreview": false,
+			"previewAmount": 0,
+			"inputs": [],
+			"name": "AWS Glue Data Catalog",
+			"generatedNodeName": "AWSGlueDataCatalog_node1730908445043",
+			"classification": "DataSource",
+			"type": "Catalog",
+			"isCatalog": true,
+			"database": "ten-cars-crash-database",
+			"table": "ten-cars-crash-dbten_crashdata_file_csv",
+			"calculatedType": "",
+			"runtimeParameters": [],
+			"codeGenVersion": 2
+		}
+	},
+	"hasBeenSaved": false,
+	"usageProfileName": null,
+	"script": "from awsglue.transforms import *\r\nfrom awsglue.utils import getResolvedOptions\r\nfrom pyspark.context import SparkContext\r\nfrom awsglue.context import GlueContext\r\nfrom awsglue.job import Job\r\nfrom pyspark.sql import functions as F\r\nimport sys\r\n\r\n\r\nargs = getResolvedOptions(sys.argv, ['JOB_NAME'])\r\n\r\nglueContext = GlueContext(SparkContext.getOrCreate())\r\nspark = glueContext.spark_session\r\n\r\n\r\n# Initialize the job\r\njob = Job(glueContext)\r\njob.init(args['JOB_NAME'], args)\r\n\r\n# Load the data from the Glue Data Catalog\r\ninput_data = glueContext.create_dynamic_frame.from_catalog(\r\n    database=\"ten-cars-crash-database\",  # Replace with your database name\r\n    table_name=\"ten-cars-crash-dbten_crashdata_file_csv\"    # Replace with your table name\r\n)\r\n\r\n# Convert to DataFrame for easier manipulation\r\ndf = input_data.toDF()\r\n\r\n# Example data cleaning: Drop duplicates, handle null values, select specific columns\r\ncleaned_df = (\r\n    df.dropDuplicates()\r\n      .na.drop()\r\n      .select(\"vidname\", \"startframe\", \"youtubeid\", \"timing\", \"weather\", \"egoinvolve\")  # Select relevant columns\r\n)\r\n\r\n# Specify the output path in S3 where the cleaned data will be stored\r\noutput_path = \"s3://ten-cars-crash-data/ten-cars-crash-cleaned-data/\"  # Replace with your bucket and folder name\r\n\r\n# Write the cleaned data back to S3 in Parquet format\r\ncleaned_df.write.mode(\"overwrite\").parquet(output_path)\r\n\r\n# Commit the Job\r\njob.commit()\r\n"
+}

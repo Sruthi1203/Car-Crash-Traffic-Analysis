@@ -1,0 +1,43 @@
+from awsglue.transforms import *
+from awsglue.utils import getResolvedOptions
+from pyspark.context import SparkContext
+from awsglue.context import GlueContext
+from awsglue.job import Job
+from pyspark.sql import functions as F
+import sys
+
+
+args = getResolvedOptions(sys.argv, ['JOB_NAME'])
+
+glueContext = GlueContext(SparkContext.getOrCreate())
+spark = glueContext.spark_session
+
+
+# Initialize the job
+job = Job(glueContext)
+job.init(args['JOB_NAME'], args)
+
+# Load the data from the Glue Data Catalog
+input_data = glueContext.create_dynamic_frame.from_catalog(
+    database="ten-cars-crash-database",  # Replace with your database name
+    table_name="ten-cars-crash-dbten_crashdata_file_csv"    # Replace with your table name
+)
+
+# Convert to DataFrame for easier manipulation
+df = input_data.toDF()
+
+# Example data cleaning: Drop duplicates, handle null values, select specific columns
+cleaned_df = (
+    df.dropDuplicates()
+      .na.drop()
+      .select("vidname", "startframe", "youtubeid", "timing", "weather", "egoinvolve")  # Select relevant columns
+)
+
+# Specify the output path in S3 where the cleaned data will be stored
+output_path = "s3://ten-cars-crash-data/ten-cars-crash-cleaned-data/"  # Replace with your bucket and folder name
+
+# Write the cleaned data back to S3 in Parquet format
+cleaned_df.write.mode("overwrite").parquet(output_path)
+
+# Commit the Job
+job.commit()
